@@ -1,8 +1,5 @@
 # SPARKIFY Database Project:
 
-## Table of Contents:
-
-
 ## General Information:
 <a id="General-Information"></a>
 
