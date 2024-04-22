@@ -6,6 +6,9 @@ from sql_queries import *
 
 
 def process_song_file(cur, filepath):
+    """
+    -reads JSON file into a filtered dataframe and inserts it into POSTGRES
+    """
     # open song file
     df = pd.read_json(filepath, lines= True)
 
@@ -19,17 +22,20 @@ def process_song_file(cur, filepath):
 
 
 def process_log_file(cur, filepath):
+    """
+    -reads log JSON data, created timestamp dataframe, user dataframe, and loops through data to create songplay table in POSTGRES 
+    """
     # open log file
-    df = pd.read_json(filepath, lines = True)
-
+    log_df = pd.read_json(filepath, lines = True)
+    
     # filter by NextSong action
-    df = df[df['page'] == 'NextSong']
+    log_df = log_df[log_df['page'] == 'NextSong']
 
     # convert timestamp column to datetime
-    t = pd.to_datetime(df['ts'], unit = 'ms')
+    t = pd.to_datetime(log_df['ts'], unit = 'ms')
     
     # insert time data records
-    time_data = [t.dt.time, t.dt.hour, t.dt.day, t.dt.week, t.dt.month, t.dt.year, t.dt.weekday]
+    time_data = [t, t.dt.hour, t.dt.day, t.dt.week, t.dt.month, t.dt.year, t.dt.weekday]
     column_labels = ('timestamp', 'hour', 'day', 'week', 'month', 'year', 'weekday')
     time_dict = {}
     for c in range(len(column_labels)):
@@ -40,14 +46,14 @@ def process_log_file(cur, filepath):
         cur.execute(time_table_insert, list(row))
 
     # load user table
-    user_df = pd.DataFrame(columns = ['userId', 'firstName', 'lastName', 'gender', 'level'])
+    user_df = log_df[['userId', 'firstName', 'lastName', 'gender', 'level']]
 
     # insert user records
     for i, row in user_df.iterrows():
         cur.execute(user_table_insert, row)
 
     # insert songplay records
-    for index, row in df.iterrows():
+    for index, row in log_df.iterrows():
         
         # get songid and artistid from song and artist tables
         cur.execute(song_select, (row.song, row.artist, row.length))
@@ -66,6 +72,9 @@ def process_log_file(cur, filepath):
 
 
 def process_data(cur, conn, filepath, func):
+    """
+    -complies desired files, counts them and outputs a completion count during processing
+    """
     # get all files matching extension from directory
     all_files = []
     for root, dirs, files in os.walk(filepath):
@@ -85,6 +94,10 @@ def process_data(cur, conn, filepath, func):
 
 
 def main():
+    """
+    -creates connection and cursor and directs coding for which filepaths to process. Closes cursor when finished.
+    """
+    
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
